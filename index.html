@@ -8,17 +8,18 @@
   body {
     margin: 0;
     overflow: hidden;
-    background-color: #f2f4f8;
-    font-family: "Inter", Arial, sans-serif;
+    background: linear-gradient(120deg, #f8f9fb, #e6ebef);
+    font-family: "Inter", sans-serif;
   }
 
   #toolbar {
     position: fixed;
-    top: 10px;
-    left: 10px;
-    background: white;
-    padding: 8px 12px;
-    border-radius: 12px;
+    top: 12px;
+    left: 12px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(10px);
+    padding: 10px 15px;
+    border-radius: 14px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     z-index: 1000;
   }
@@ -26,59 +27,90 @@
   #toolbar select, #toolbar button {
     margin-right: 8px;
     padding: 6px 10px;
-    border-radius: 6px;
-    border: 1px solid #ddd;
+    border-radius: 8px;
+    border: 1px solid #ccc;
     font-size: 14px;
+    background: white;
+    cursor: pointer;
   }
 
   #canvas {
-    width: 5000px;
-    height: 3000px;
+    width: 6000px;
+    height: 4000px;
     position: relative;
-    background: repeating-linear-gradient(45deg, #fafafa, #fafafa 49px, #f0f0f0 50px);
     transform-origin: 0 0;
+    background: repeating-linear-gradient(45deg, #fafafa, #fafafa 49px, #f0f0f0 50px);
   }
 
   .card {
     position: absolute;
-    width: 230px;
-    min-height: 120px;
-    border-radius: 12px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.15);
-    padding: 10px;
+    width: 240px;
+    min-height: 140px;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    padding: 12px;
     cursor: grab;
+    transition: transform 0.15s;
     color: #222;
-    transition: transform 0.1s;
   }
 
-  .card:active {
-    cursor: grabbing;
-    transform: scale(1.02);
+  .card:active { cursor: grabbing; transform: scale(1.03); }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
   }
 
-  .area-pesquisa { background: #d6eaff; }
-  .area-evento { background: #fce4ec; }
-  .area-app { background: #dff8df; }
-  .area-mentoria { background: #fff4d6; }
-  .area-pessoal { background: #e8e8e8; }
+  .card-header select {
+    font-size: 13px;
+    border-radius: 6px;
+    border: none;
+    background: rgba(255,255,255,0.6);
+    cursor: pointer;
+  }
 
   textarea {
     width: 100%;
-    height: 70px;
+    height: 60px;
     border: none;
     background: transparent;
     resize: none;
     outline: none;
     font-size: 14px;
+    font-family: inherit;
   }
 
-  a {
-    color: #0056b3;
-    text-decoration: none;
+  input.link-input {
+    width: 100%;
+    border: none;
+    background: rgba(255,255,255,0.7);
+    border-radius: 6px;
+    padding: 4px 6px;
+    margin-top: 6px;
     font-size: 13px;
+    outline: none;
   }
 
-  a:hover { text-decoration: underline; }
+  .area-pesquisa { background: linear-gradient(135deg, #d9eaff, #b0d4ff); }
+  .area-evento { background: linear-gradient(135deg, #fde2e4, #f8b5c1); }
+  .area-app { background: linear-gradient(135deg, #e3fbe3, #b9ebb9); }
+  .area-mentoria { background: linear-gradient(135deg, #fff3cd, #ffe69a); }
+  .area-pessoal { background: linear-gradient(135deg, #f0f0f0, #d8d8d8); }
+
+  .zoom-tip {
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+    background: rgba(255,255,255,0.8);
+    backdrop-filter: blur(8px);
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    color: #444;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
 </style>
 </head>
 <body>
@@ -96,6 +128,7 @@
 </div>
 
 <div id="canvas"></div>
+<div class="zoom-tip">🖱️ Use scroll para zoom e arraste o fundo para mover</div>
 
 <script>
 const canvas = document.getElementById('canvas');
@@ -128,8 +161,8 @@ document.body.addEventListener('mousemove', e => {
   canvas.style.transform = `translate(${originX}px, ${originY}px) scale(${scale})`;
 });
 
-// Salvar e carregar
-const saved = JSON.parse(localStorage.getItem('canvasLayoutV2')) || [];
+// Carregar layout salvo
+const saved = JSON.parse(localStorage.getItem('canvasLayoutV3')) || [];
 saved.forEach(c => addCard(c.text, c.x, c.y, c.area, c.link));
 
 addCardBtn.onclick = () => addCard("Novo projeto", 200, 200, areaSelect.value, "");
@@ -137,12 +170,12 @@ addCardBtn.onclick = () => addCard("Novo projeto", 200, 200, areaSelect.value, "
 saveBtn.onclick = () => {
   const cards = [...document.querySelectorAll('.card')].map(card => ({
     text: card.querySelector('textarea').value,
-    link: card.querySelector('a').href,
+    link: card.querySelector('.link-input').value,
     area: card.dataset.area,
     x: card.offsetLeft,
     y: card.offsetTop
   }));
-  localStorage.setItem('canvasLayoutV2', JSON.stringify(cards));
+  localStorage.setItem('canvasLayoutV3', JSON.stringify(cards));
   alert("Layout salvo!");
 };
 
@@ -153,6 +186,7 @@ resetBtn.onclick = () => {
   }
 };
 
+// Função principal
 function addCard(text, x, y, area, link) {
   const card = document.createElement('div');
   card.className = `card ${area}`;
@@ -160,17 +194,31 @@ function addCard(text, x, y, area, link) {
   card.style.left = x + 'px';
   card.style.top = y + 'px';
   card.innerHTML = `
+    <div class="card-header">
+      <strong>📌 Projeto</strong>
+      <select class="area-select">
+        <option value="area-pesquisa" ${area==="area-pesquisa"?"selected":""}>🔬</option>
+        <option value="area-evento" ${area==="area-evento"?"selected":""}>🎤</option>
+        <option value="area-app" ${area==="area-app"?"selected":""}>💻</option>
+        <option value="area-mentoria" ${area==="area-mentoria"?"selected":""}>🧠</option>
+        <option value="area-pessoal" ${area==="area-pessoal"?"selected":""}>🌿</option>
+      </select>
+    </div>
     <textarea>${text}</textarea>
-    <a href="${link || '#'}" target="_blank">🔗 Link</a>
+    <input class="link-input" value="${link}" placeholder="Cole aqui o link (GitHub, Docs, etc.)">
   `;
   makeDraggable(card);
+  card.querySelector('.area-select').addEventListener('change', e => {
+    card.className = `card ${e.target.value}`;
+    card.dataset.area = e.target.value;
+  });
   canvas.appendChild(card);
 }
 
 function makeDraggable(el) {
   let offsetX, offsetY;
   el.onmousedown = e => {
-    if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'A') return;
+    if (["TEXTAREA", "SELECT", "INPUT"].includes(e.target.tagName)) return;
     offsetX = e.clientX - el.offsetLeft;
     offsetY = e.clientY - el.offsetTop;
     document.onmousemove = e => {
