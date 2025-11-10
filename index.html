@@ -1,1 +1,109 @@
 
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Projetos — Henrique Neves</title>
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: #f5f5f5;
+    font-family: Arial, sans-serif;
+  }
+
+  #canvas {
+    width: 5000px;
+    height: 3000px;
+    position: relative;
+    background: linear-gradient(45deg, #fafafa, #ececec);
+  }
+
+  .card {
+    position: absolute;
+    width: 220px;
+    min-height: 120px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    padding: 12px;
+    cursor: move;
+  }
+
+  #toolbar {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background: white;
+    padding: 10px 15px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+
+  button {
+    cursor: pointer;
+    margin-right: 8px;
+  }
+</style>
+</head>
+<body>
+<div id="toolbar">
+  <button id="addCard">➕ Novo Projeto</button>
+  <button id="saveLayout">💾 Salvar</button>
+  <button id="reset">🗑️ Limpar</button>
+</div>
+<div id="canvas"></div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const addCardBtn = document.getElementById('addCard');
+const saveBtn = document.getElementById('saveLayout');
+const resetBtn = document.getElementById('reset');
+
+// Carrega layout salvo
+const saved = JSON.parse(localStorage.getItem('canvasLayout')) || [];
+saved.forEach(c => addCard(c.text, c.x, c.y));
+
+addCardBtn.onclick = () => addCard("Novo projeto", 200, 200);
+
+saveBtn.onclick = () => {
+  const cards = [...document.querySelectorAll('.card')].map(card => ({
+    text: card.querySelector('textarea').value,
+    x: card.offsetLeft,
+    y: card.offsetTop
+  }));
+  localStorage.setItem('canvasLayout', JSON.stringify(cards));
+  alert("Layout salvo!");
+};
+
+resetBtn.onclick = () => {
+  localStorage.clear();
+  location.reload();
+};
+
+function addCard(text, x, y) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.left = x + 'px';
+  card.style.top = y + 'px';
+  card.innerHTML = `<textarea style="width:100%;height:80px;border:none;outline:none;">${text}</textarea>`;
+  makeDraggable(card);
+  canvas.appendChild(card);
+}
+
+function makeDraggable(el) {
+  let offsetX, offsetY;
+  el.onmousedown = e => {
+    offsetX = e.clientX - el.offsetLeft;
+    offsetY = e.clientY - el.offsetTop;
+    document.onmousemove = e => {
+      el.style.left = (e.clientX - offsetX) + 'px';
+      el.style.top = (e.clientY - offsetY) + 'px';
+    };
+    document.onmouseup = () => document.onmousemove = null;
+  };
+}
+</script>
+</body>
+</html>
