@@ -1,0 +1,136 @@
+body {
+  margin: 0;
+  overflow: hidden;
+  background: linear-gradient(120deg,#f8f9fb,#e6ebef);
+  font-family: "Inter", sans-serif;
+}
+
+#toolbar {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(10px);
+  padding: 10px 15px;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 1000;
+}
+
+#toolbar select, #toolbar button {
+  margin-right: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+}
+
+#canvas {
+  width: 6000px;
+  height: 4000px;
+  position: relative;
+  transform-origin: 0 0;
+  background: repeating-linear-gradient(45deg,#fafafa,#fafafa 49px,#f0f0f0 50px);
+}
+
+.card {
+  position: absolute;
+  width: 260px;
+  min-height: 160px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  padding: 12px;
+  cursor: grab;
+  transition: transform 0.15s;
+  color: #222;
+  overflow: hidden;
+}
+
+.card:active {
+  cursor: grabbing;
+  transform: scale(1.03);
+}
+
+.card img {
+  width: 100%;
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.card-header select {
+  font-size: 13px;
+  border-radius: 6px;
+  border: none;
+  background: rgba(255,255,255,0.6);
+  cursor: pointer;
+}
+
+textarea {
+  width: 100%;
+  height: 60px;
+  border: none;
+  background: transparent;
+  resize: none;
+  outline: none;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+input.link-input,
+input.progress-input {
+  width: 100%;
+  border: none;
+  background: rgba(255,255,255,0.7);
+  border-radius: 6px;
+  padding: 4px 6px;
+  margin-top: 6px;
+  font-size: 13px;
+  outline: none;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: 6px;
+  background: #e0e0e0;
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 6px;
+  background: #4caf50;
+  width: 0%;
+  transition: width .3s;
+}
+
+.zoom-tip {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  background: rgba(255,255,255,0.8);
+  backdrop-filter: blur(8px);
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #444;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Paleta por área */
+.area-pesquisa { background: linear-gradient(135deg,#d9eaff,#b0d4ff); }
+.area-evento { background: linear-gradient(135deg,#fde2e4,#f8b5c1); }
+.area-app { background: linear-gradient(135deg,#e3fbe3,#b9ebb9); }
+.area-mentoria { background: linear-gradient(135deg,#fff3cd,#ffe69a); }
+.area-pessoal { background: linear-gradient(135deg,#f0f0f0,#d8d8d8); }
+.area-leitura { background: linear-gradient(135deg,#e1e5ff,#c4c8ff); }
