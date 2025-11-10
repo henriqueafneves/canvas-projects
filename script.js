@@ -1,133 +1,118 @@
 const canvas = document.getElementById('canvas');
+const svg = document.getElementById('connections');
 const areaSelect = document.getElementById('area');
 const addCardBtn = document.getElementById('addCard');
 const saveBtn = document.getElementById('saveLayout');
 const resetBtn = document.getElementById('reset');
 
+let connections = []; // pai→filhos
+
+// PAN e ZOOM
 let scale = 1, originX = 0, originY = 0, isPanning = false, startX, startY;
-
-document.body.addEventListener('wheel', e => {
+document.body.addEventListener('wheel', e=>{
   e.preventDefault();
-  const delta = e.deltaY > 0 ? 0.9 : 1.1;
-  scale *= delta;
-  canvas.style.transform = `translate(${originX}px, ${originY}px) scale(${scale})`;
+  scale *= e.deltaY > 0 ? 0.9 : 1.1;
+  updateTransform();
 });
-
-document.body.addEventListener('mousedown', e => {
-  if (e.target === canvas) {
-    isPanning = true;
-    startX = e.clientX - originX;
-    startY = e.clientY - originY;
-  }
+document.body.addEventListener('mousedown', e=>{
+  if(e.target===canvas){isPanning=true;startX=e.clientX-originX;startY=e.clientY-originY;}
 });
-
-document.body.addEventListener('mouseup', () => isPanning = false);
-document.body.addEventListener('mousemove', e => {
-  if (!isPanning) return;
-  originX = e.clientX - startX;
-  originY = e.clientY - startY;
-  canvas.style.transform = `translate(${originX}px, ${originY}px) scale(${scale})`;
+document.body.addEventListener('mouseup', ()=>isPanning=false);
+document.body.addEventListener('mousemove', e=>{
+  if(!isPanning)return;
+  originX=e.clientX-startX;originY=e.clientY-startY;updateTransform();
 });
-
-async function loadData() {
-  try {
-    const data = await fetch('data/projects.json');
-    const cards = await data.json();
-    cards.forEach(c => addCard(c.text, c.x, c.y, c.area, c.link, c.progress || 0, c.cover));
-  } catch {
-    console.log("Sem dados anteriores — iniciando vazio");
-  }
+function updateTransform(){
+  canvas.style.transform=`translate(${originX}px,${originY}px) scale(${scale})`;
+  svg.style.transform=`translate(${originX}px,${originY}px) scale(${scale})`;
 }
 
-addCardBtn.onclick = () => addCard("Novo projeto", 200, 200, areaSelect.value, "", 0, "assets/default-cover.jpg");
+// CRIAÇÃO e EDIÇÃO
+addCardBtn.onclick=()=>addCard("Novo projeto",200,200,areaSelect.value,"",0);
+saveBtn.onclick=()=>alert("Salvamento local/JSON desativado nesta versão de exemplo.");
 
-saveBtn.onclick = async () => {
-  const cards = [...document.querySelectorAll('.card')].map(card => ({
-    text: card.querySelector('textarea').value,
-    link: card.querySelector('.link-input').value,
-    progress: parseInt(card.querySelector('.progress-input')?.value || 0),
-    area: card.dataset.area,
-    cover: card.querySelector('img')?.src || "",
-    x: card.offsetLeft,
-    y: card.offsetTop
-  }));
-
-  localStorage.setItem('canvasLayoutV5', JSON.stringify(cards));
-  await saveToGitHub(cards);
-  alert("Layout salvo e sincronizado!");
+resetBtn.onclick=()=>{
+  if(confirm("Deseja limpar tudo?")){canvas.innerHTML="";svg.innerHTML="";connections=[];}
 };
 
-resetBtn.onclick = () => {
-  if (confirm("Tem certeza que deseja limpar tudo?")) {
-    localStorage.clear();
-    location.reload();
-  }
-};
-
-function addCard(text, x, y, area, link, progress, cover) {
-  const card = document.createElement('div');
-  card.className = `card ${area}`;
-  card.dataset.area = area;
-  card.style.left = x + 'px';
-  card.style.top = y + 'px';
-
-  card.innerHTML = `
-    ${area === "area-leitura" ? `<img src="${cover || "assets/default-cover.jpg"}" alt="Capa">` : ""}
+function addCard(text,x,y,area,link,progress){
+  const card=document.createElement('div');
+  card.className=`card ${area}`;
+  card.dataset.area=area;
+  card.style.left=x+'px';
+  card.style.top=y+'px';
+  card.innerHTML=`
     <div class="card-header">
-      <strong>${area === "area-leitura" ? "📚 Leitura" : "📌 Projeto"}</strong>
-      <select class="area-select">
-        <option value="area-pesquisa" ${area==="area-pesquisa"?"selected":""}>🔬</option>
-        <option value="area-evento" ${area==="area-evento"?"selected":""}>🎤</option>
-        <option value="area-app" ${area==="area-app"?"selected":""}>💻</option>
-        <option value="area-mentoria" ${area==="area-mentoria"?"selected":""}>🧠</option>
-        <option value="area-pessoal" ${area==="area-pessoal"?"selected":""}>🌿</option>
-        <option value="area-leitura" ${area==="area-leitura"?"selected":""}>📚</option>
-      </select>
+      <strong>${area==="area-leitura"?"📚 Leitura":"📌 Projeto"}</strong>
+      <div class="card-controls">
+        <button class="connect-btn">🌐</button>
+        <button class="delete-btn">🗑️</button>
+      </div>
     </div>
     <textarea>${text}</textarea>
     <input class="link-input" value="${link}" placeholder="Link (GitHub, Docs, etc.)">
-    ${area === "area-leitura" ?
-      `<div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
-       <div style="margin-top:4px;font-size:13px;">Progresso:
-       <input class="progress-input" type="number" min="0" max="100" value="${progress}">%</div>`
-      : ""}
   `;
-
+  canvas.appendChild(card);
   makeDraggable(card);
   attachCardEvents(card);
-  canvas.appendChild(card);
+  return card;
 }
 
-function attachCardEvents(card) {
-  const select = card.querySelector('.area-select');
-  select.addEventListener('change', e => {
-    const newArea = e.target.value;
-    card.className = `card ${newArea}`;
-    card.dataset.area = newArea;
-  });
-
-  const progressInput = card.querySelector('.progress-input');
-  const progressFill = card.querySelector('.progress-fill');
-  if (progressInput && progressFill) {
-    progressInput.addEventListener('input', () => {
-      let val = Math.max(0, Math.min(100, progressInput.value));
-      progressFill.style.width = val + "%";
-    });
-  }
+function attachCardEvents(card){
+  card.querySelector('.delete-btn').onclick=()=>{card.remove();removeConnections(card);};
+  card.querySelector('.connect-btn').onclick=()=>createConnection(card);
 }
 
-function makeDraggable(el) {
-  let offsetX, offsetY;
-  el.onmousedown = e => {
-    if (["TEXTAREA","SELECT","INPUT","IMG"].includes(e.target.tagName)) return;
-    offsetX = e.clientX - el.offsetLeft;
-    offsetY = e.clientY - el.offsetTop;
-    document.onmousemove = e => {
-      el.style.left = (e.clientX - offsetX) + 'px';
-      el.style.top = (e.clientY - offsetY) + 'px';
+function makeDraggable(el){
+  let offsetX,offsetY;
+  el.onmousedown=e=>{
+    if(["TEXTAREA","INPUT","BUTTON"].includes(e.target.tagName))return;
+    offsetX=e.clientX-el.offsetLeft;offsetY=e.clientY-el.offsetTop;
+    document.onmousemove=e=>{
+      el.style.left=(e.clientX-offsetX)+'px';
+      el.style.top=(e.clientY-offsetY)+'px';
+      updateLines();
     };
-    document.onmouseup = () => document.onmousemove = null;
+    document.onmouseup=()=>document.onmousemove=null;
   };
 }
 
-loadData();
+// CONEXÕES
+function createConnection(parent){
+  const child=addCard("Novo filho",parent.offsetLeft+300,parent.offsetTop+Math.random()*100,parent.dataset.area,"",0);
+  connections.push({from:parent,to:child});
+  drawLine(parent,child);
+}
+function drawLine(parent,child){
+  const line=document.createElementNS("http://www.w3.org/2000/svg","line");
+  svg.appendChild(line);
+  updateLinePosition(line,parent,child);
+  line.dataset.parent=parent.dataset.id;
+  line.dataset.child=child.dataset.id;
+}
+function updateLines(){
+  const lines=[...svg.querySelectorAll("line")];
+  lines.forEach(line=>{
+    const parent=connections.find(c=>c.line===line)?.from;
+    const child=connections.find(c=>c.line===line)?.to;
+    if(parent&&child)updateLinePosition(line,parent,child);
+  });
+}
+function updateLinePosition(line,parent,child){
+  const px=parent.offsetLeft+parent.offsetWidth/2;
+  const py=parent.offsetTop+parent.offsetHeight/2;
+  const cx=child.offsetLeft+child.offsetWidth/2;
+  const cy=child.offsetTop+child.offsetHeight/2;
+  line.setAttribute("x1",px);
+  line.setAttribute("y1",py);
+  line.setAttribute("x2",cx);
+  line.setAttribute("y2",cy);
+}
+function removeConnections(card){
+  connections=connections.filter(c=>{
+    if(c.from===card||c.to===card)return false;
+    return true;
+  });
+  svg.innerHTML="";
+  connections.forEach(c=>drawLine(c.from,c.to));
+}
