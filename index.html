@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Painel de Projetos — Henrique Neves</title>
+  <title>Painel de Projetos — Henrique Neves (v6.1)</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -22,13 +22,16 @@
     <button id="toggleFocus">🎯 Modo Foco: OFF</button>
   </div>
 
-  <!-- SVG para conexões (linhas + rótulos) -->
   <svg id="connections"></svg>
-
-  <!-- Canvas dos cards -->
   <div id="canvas"></div>
 
-  <div class="zoom-tip">🖱️ Zoom: scroll • Pan: arraste o fundo • Clique em 🌐 para criar conexões</div>
+  <!-- Minimap -->
+  <div id="minimap">
+    <svg id="mini-svg"></svg>
+    <div id="mini-viewport"></div>
+  </div>
+
+  <div class="zoom-tip">🖱️ Zoom: scroll • Pan: arraste o fundo • 🌐 conexões • 🎯 foco</div>
 
   <script src="github.js"></script>
   <script src="script.js"></script>

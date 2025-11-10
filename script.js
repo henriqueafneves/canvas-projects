@@ -6,12 +6,24 @@ const saveBtn = document.getElementById('saveLayout');
 const resetBtn = document.getElementById('reset');
 const toggleFocusBtn = document.getElementById('toggleFocus');
 
+// Minimap
+const mini = document.getElementById('minimap');
+const miniSvg = document.getElementById('mini-svg');
+const miniViewport = document.getElementById('mini-viewport');
+
 // State
 let scale = 1, originX = 0, originY = 0, isPanning = false, startX, startY;
 let nextId = 1;
-let connections = []; // {fromId, toId, relation, lineEl, labelEl}
+let connections = []; // {fromId, toId, relation, lineEl, labelEl, cls}
 let focusMode = false;
 let focusedId = null;
+
+// Canvas size (match CSS)
+const CANVAS_W = 6000, CANVAS_H = 4000;
+// Minimap scale
+const MINI_W = 220, MINI_H = 160;
+const miniScaleX = MINI_W / CANVAS_W;
+const miniScaleY = MINI_H / CANVAS_H;
 
 // ---------- Pan & Zoom ----------
 document.body.addEventListener('wheel', e => {
@@ -19,6 +31,7 @@ document.body.addEventListener('wheel', e => {
   const factor = e.deltaY > 0 ? 0.9 : 1.1;
   scale *= factor;
   updateTransform();
+  updateMiniViewport();
 });
 document.body.addEventListener('mousedown', e => {
   if (e.target === canvas) {
@@ -33,31 +46,101 @@ document.body.addEventListener('mousemove', e => {
   originX = e.clientX - startX;
   originY = e.clientY - startY;
   updateTransform();
+  updateMiniViewport();
 });
+
 function updateTransform() {
   const t = `translate(${originX}px, ${originY}px) scale(${scale})`;
   canvas.style.transform = t;
   svg.style.transform = t;
 }
 
+// ---------- Minimap ----------
+function drawMini() {
+  // clear
+  miniSvg.innerHTML = "";
+  // draw cards as rectangles
+  document.querySelectorAll('.card').forEach(card => {
+    const x = card.offsetLeft * miniScaleX;
+    const y = card.offsetTop * miniScaleY;
+    const w = card.offsetWidth * miniScaleX;
+    const h = card.offsetHeight * miniScaleY;
+    const rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+    rect.setAttribute("x", x); rect.setAttribute("y", y);
+    rect.setAttribute("width", w); rect.setAttribute("height", h);
+    rect.setAttribute("fill", "rgba(50,100,200,0.35)");
+    rect.setAttribute("stroke", "rgba(20,40,120,0.6)");
+    rect.setAttribute("stroke-width", "1");
+    miniSvg.appendChild(rect);
+  });
+  // draw lines (simplified)
+  connections.forEach(edge => {
+    const parent = getCardById(edge.fromId), child = getCardById(edge.toId);
+    if (!parent || !child) return;
+    const px = (parent.offsetLeft + parent.offsetWidth/2) * miniScaleX;
+    const py = (parent.offsetTop + parent.offsetHeight/2) * miniScaleY;
+    const cx = (child.offsetLeft + child.offsetWidth/2) * miniScaleX;
+    const cy = (child.offsetTop + child.offsetHeight/2) * miniScaleY;
+    const line = document.createElementNS("http://www.w3.org/2000/svg","line");
+    line.setAttribute("x1", px); line.setAttribute("y1", py);
+    line.setAttribute("x2", cx); line.setAttribute("y2", cy);
+    line.setAttribute("stroke", "rgba(60,60,150,0.5)");
+    line.setAttribute("stroke-width", "1");
+    miniSvg.appendChild(line);
+  });
+  updateMiniViewport();
+}
+
+function updateMiniViewport() {
+  // viewport in canvas coords: what portion of canvas is visible in window?
+  const vw = window.innerWidth, vh = window.innerHeight;
+  // convert window size back to canvas space: size / scale
+  const cw = vw / scale, ch = vh / scale;
+  // originX/originY is translation applied to canvas in screen pixels.
+  // canvas top-left in screen is at originX,originY; we want the inverse transform to get top-left in canvas coords.
+  const canvasVisibleX = -originX / scale;
+  const canvasVisibleY = -originY / scale;
+  miniViewport.style.width  = (cw * miniScaleX) + "px";
+  miniViewport.style.height = (ch * miniScaleY) + "px";
+  miniViewport.style.transform = `translate(${canvasVisibleX * miniScaleX + mini.offsetLeft}px, ${canvasVisibleY * miniScaleY + mini.offsetTop}px)`;
+}
+
+// click on minimap to jump
+mini.addEventListener('click', e => {
+  const rect = mini.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  // center the viewport around clicked point
+  const targetCanvasX = (mx / miniScaleX) - (window.innerWidth / (2*scale));
+  const targetCanvasY = (my / miniScaleY) - (window.innerHeight / (2*scale));
+  originX = -targetCanvasX * scale;
+  originY = -targetCanvasY * scale;
+  updateTransform();
+  updateMiniViewport();
+});
+
 // ---------- Init ----------
 window.addEventListener('DOMContentLoaded', () => {
-  // Load initial data (from JSON if available)
-  fetch('data/projects.json').then(r => r.json()).then(items => {
+  // Load from JSON if exists
+  fetch('data/projects.json').then(r => r.json()).then(data => {
+    const items = data.cards || data; // backward compatibility
     items.forEach(c => {
       const card = addCard(c.text, c.x, c.y, c.area, c.link, c.progress || 0, c.cover);
       card.dataset.id = c.id || (nextId++).toString();
       nextId = Math.max(nextId, parseInt(card.dataset.id,10)+1);
     });
-    if (items.connections) {
-      items.connections.forEach(edge => {
-        const p = getCardById(edge.fromId);
-        const ch = getCardById(edge.toId);
-        if (p && ch) createConnection(p, ch, edge.relation, false);
-      });
-    }
+    const edges = data.connections || [];
+    edges.forEach(edge => {
+      const p = getCardById(edge.fromId);
+      const ch = getCardById(edge.toId);
+      if (p && ch) createConnection(p, ch, edge.relation, false);
+    });
+    drawMini();
+    updateMiniViewport();
   }).catch(() => {
     console.log('Sem projects.json — iniciando vazio.');
+    drawMini();
+    updateMiniViewport();
   });
 });
 
@@ -65,6 +148,7 @@ window.addEventListener('DOMContentLoaded', () => {
 addCardBtn.onclick = () => {
   const card = addCard("Novo projeto", 200, 200, areaSelect.value, "", 0, "assets/default-cover.jpg");
   card.dataset.id = (nextId++).toString();
+  drawMini();
 };
 saveBtn.onclick = async () => {
   const cards = [...document.querySelectorAll('.card')].map(card => ({
@@ -79,16 +163,13 @@ saveBtn.onclick = async () => {
   const edges = connections.map(c => ({
     fromId: c.fromId, toId: c.toId, relation: c.relation
   }));
-  const payload = { items: cards.length, connections: edges.length };
-  localStorage.setItem('canvasLayoutV6', JSON.stringify({ cards, connections: edges }));
-
-  // Optional GitHub sync (requires token in github.js)
+  localStorage.setItem('canvasLayoutV6_1', JSON.stringify({ cards, connections: edges }));
   try {
     await saveToGitHub({ cards, connections: edges });
     alert("Salvo localmente e sincronizado com GitHub!");
   } catch (e) {
-    console.warn("Sincronização GitHub falhou (verifique o token em github.js).", e);
-    alert("Salvo localmente. (Sincronização GitHub não configurada)");
+    console.warn("Sync GitHub falhou (verifique token).", e);
+    alert("Salvo localmente. (Sync GitHub não configurado)");
   }
 };
 resetBtn.onclick = () => {
@@ -97,15 +178,14 @@ resetBtn.onclick = () => {
     canvas.innerHTML = "";
     svg.innerHTML = "";
     connections = [];
+    drawMini();
+    updateMiniViewport();
   }
 };
-
 toggleFocusBtn.onclick = () => {
   focusMode = !focusMode;
   toggleFocusBtn.textContent = `🎯 Modo Foco: ${focusMode ? "ON" : "OFF"}`;
-  if (!focusMode) {
-    clearFocus();
-  }
+  if (!focusMode) clearFocus();
 };
 
 // ---------- Cards ----------
@@ -154,11 +234,10 @@ function attachCardEvents(card) {
   const con = card.querySelector('.connect-btn');
   const areaSel = card.querySelector('.area-select');
 
-  del.onclick = () => { removeCard(card); };
+  del.onclick = () => { removeCard(card); drawMini(); };
   con.onclick = () => { startConnectionFlow(card); };
-  areaSel.onchange = (e) => { changeArea(card, e.target.value); };
+  areaSel.onchange = (e) => { changeArea(card, e.target.value); drawMini(); };
 
-  // Focus handling
   card.addEventListener('click', (e) => {
     if (!focusMode) return;
     e.stopPropagation();
@@ -174,7 +253,6 @@ function changeArea(card, newArea) {
   const nowIsReading = newArea === "area-leitura";
 
   if (nowIsReading && !oldIsReading) {
-    // add reading UI
     const img = document.createElement('img');
     img.src = "assets/default-cover.jpg";
     img.alt = "Capa";
@@ -196,20 +274,17 @@ function changeArea(card, newArea) {
       progressFill.style.width = v + "%";
     });
   } else if (!nowIsReading && oldIsReading) {
-    // remove reading UI
-    const img = card.querySelector('img');
-    if (img) img.remove();
+    const img = card.querySelector('img'); if (img) img.remove();
     card.querySelectorAll('.progress-bar').forEach(e => e.remove());
     card.querySelectorAll('.progress-input').forEach(e => e.parentElement.remove());
   }
 }
 
 function removeCard(card) {
-  // Remove connections attached
   connections = connections.filter(c => {
     if (c.fromId === card.dataset.id || c.toId === card.dataset.id) {
-      if (c.lineEl && c.lineEl.parentNode) c.lineEl.parentNode.removeChild(c.lineEl);
-      if (c.labelEl && c.labelEl.parentNode) c.labelEl.parentNode.removeChild(c.labelEl);
+      if (c.lineEl?.parentNode) c.lineEl.parentNode.removeChild(c.lineEl);
+      if (c.labelEl?.parentNode) c.labelEl.parentNode.removeChild(c.labelEl);
       return false;
     }
     return true;
@@ -220,12 +295,19 @@ function removeCard(card) {
 
 // ---------- Connection Flow ----------
 function startConnectionFlow(parent) {
-  // Prompt for relation name
   const relation = prompt("Nome da relação (ex.: 'inspira', 'depende de', 'continuação de'):", "inspira");
-  // Create child card to the right, connected
   const child = addCard("Novo filho", parent.offsetLeft + 320, parent.offsetTop + (Math.random()*120-60),
     parent.dataset.area, "", 0, parent.querySelector('img')?.getAttribute('src'));
-  createConnection(parent, child, relation || "conexão");
+  createConnection(parent, child, relation || "conexão", true);
+  drawMini();
+}
+
+function relationClass(rel) {
+  rel = (rel||"").toLowerCase();
+  if (rel.includes("inspira")) return "rel-inspira";
+  if (rel.includes("depende")) return "rel-depende";
+  if (rel.includes("continua") || rel.includes("continuação")) return "rel-continua";
+  return "rel-default";
 }
 
 function createConnection(parentCard, childCard, relation, withPulse=true) {
@@ -233,7 +315,7 @@ function createConnection(parentCard, childCard, relation, withPulse=true) {
   const toId = childCard.dataset.id;
 
   const line = document.createElementNS("http://www.w3.org/2000/svg","line");
-  line.classList.add('connection-line');
+  line.classList.add('connection-line', relationClass(relation));
   if (withPulse) line.classList.add('pulse');
   svg.appendChild(line);
 
@@ -242,7 +324,7 @@ function createConnection(parentCard, childCard, relation, withPulse=true) {
   label.textContent = relation || "conexão";
   svg.appendChild(label);
 
-  const edge = { fromId, toId, relation, lineEl: line, labelEl: label };
+  const edge = { fromId, toId, relation, lineEl: line, labelEl: label, cls: relationClass(relation) };
   connections.push(edge);
   updateEdgePosition(edge);
 }
@@ -261,7 +343,6 @@ function updateEdgePosition(edge) {
   edge.lineEl.setAttribute('x2', cx);
   edge.lineEl.setAttribute('y2', cy);
 
-  // Label at midpoint
   const mx = (px + cx) / 2;
   const my = (py + cy) / 2 - 6;
   edge.labelEl.setAttribute('x', mx);
@@ -283,7 +364,8 @@ function makeDraggable(el) {
       el.style.left = (ev.clientX - offsetX) + 'px';
       el.style.top  = (ev.clientY - offsetY) + 'px';
       updateAllEdges();
-      if (focusMode) applyFocus(); // keep highlight positions
+      drawMini();
+      if (focusMode) applyFocus();
     }
     function up() {
       document.removeEventListener('mousemove', move);
@@ -292,11 +374,6 @@ function makeDraggable(el) {
     document.addEventListener('mousemove', move);
     document.addEventListener('mouseup', up);
   });
-}
-
-// ---------- Helpers ----------
-function getCardById(id) {
-  return [...document.querySelectorAll('.card')].find(c => c.dataset.id === id);
 }
 
 // ---------- Focus Mode ----------
@@ -314,27 +391,18 @@ function applyFocus() {
     if (e.toId === focusedId) neighborIds.add(e.fromId);
   });
 
-  // Cards
   [...document.querySelectorAll('.card')].forEach(c => {
-    if (neighborIds.has(c.dataset.id)) {
-      c.classList.add('highlight');
-      c.classList.remove('dimmed');
-    } else {
-      c.classList.add('dimmed');
-      c.classList.remove('highlight');
-    }
+    if (neighborIds.has(c.dataset.id)) { c.classList.add('highlight'); c.classList.remove('dimmed'); }
+    else { c.classList.add('dimmed'); c.classList.remove('highlight'); }
   });
 
-  // Lines & labels
   [...svg.querySelectorAll('.connection-line, .connection-label')].forEach(el => {
     const edge = connections.find(e => e.lineEl === el || e.labelEl === el);
     if (!edge) return;
     if (edge.fromId === focusedId || edge.toId === focusedId) {
-      el.classList.add('highlight');
-      el.classList.remove('dimmed');
+      el.classList.add('highlight'); el.classList.remove('dimmed');
     } else {
-      el.classList.add('dimmed');
-      el.classList.remove('highlight');
+      el.classList.add('dimmed'); el.classList.remove('highlight');
     }
   });
 }
@@ -342,7 +410,8 @@ function applyFocus() {
 // Click vazio do canvas sai do foco
 document.addEventListener('click', e => {
   if (!focusMode) return;
-  if (e.target === document.body || e.target === canvas) {
-    clearFocus();
-  }
+  if (e.target === document.body || e.target === canvas) clearFocus();
 });
+
+// ---------- Helpers ----------
+function getCardById(id){ return [...document.querySelectorAll('.card')].find(c => c.dataset.id === id); }
