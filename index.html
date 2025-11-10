@@ -1,233 +1,30 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Painel de Projetos — Henrique Neves</title>
-<style>
-  body {
-    margin: 0;
-    overflow: hidden;
-    background: linear-gradient(120deg, #f8f9fb, #e6ebef);
-    font-family: "Inter", sans-serif;
-  }
-
-  #toolbar {
-    position: fixed;
-    top: 12px;
-    left: 12px;
-    background: rgba(255,255,255,0.85);
-    backdrop-filter: blur(10px);
-    padding: 10px 15px;
-    border-radius: 14px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    z-index: 1000;
-  }
-
-  #toolbar select, #toolbar button {
-    margin-right: 8px;
-    padding: 6px 10px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    font-size: 14px;
-    background: white;
-    cursor: pointer;
-  }
-
-  #canvas {
-    width: 6000px;
-    height: 4000px;
-    position: relative;
-    transform-origin: 0 0;
-    background: repeating-linear-gradient(45deg, #fafafa, #fafafa 49px, #f0f0f0 50px);
-  }
-
-  .card {
-    position: absolute;
-    width: 240px;
-    min-height: 140px;
-    border-radius: 16px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-    padding: 12px;
-    cursor: grab;
-    transition: transform 0.15s;
-    color: #222;
-  }
-
-  .card:active { cursor: grabbing; transform: scale(1.03); }
-
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-
-  .card-header select {
-    font-size: 13px;
-    border-radius: 6px;
-    border: none;
-    background: rgba(255,255,255,0.6);
-    cursor: pointer;
-  }
-
-  textarea {
-    width: 100%;
-    height: 60px;
-    border: none;
-    background: transparent;
-    resize: none;
-    outline: none;
-    font-size: 14px;
-    font-family: inherit;
-  }
-
-  input.link-input {
-    width: 100%;
-    border: none;
-    background: rgba(255,255,255,0.7);
-    border-radius: 6px;
-    padding: 4px 6px;
-    margin-top: 6px;
-    font-size: 13px;
-    outline: none;
-  }
-
-  .area-pesquisa { background: linear-gradient(135deg, #d9eaff, #b0d4ff); }
-  .area-evento { background: linear-gradient(135deg, #fde2e4, #f8b5c1); }
-  .area-app { background: linear-gradient(135deg, #e3fbe3, #b9ebb9); }
-  .area-mentoria { background: linear-gradient(135deg, #fff3cd, #ffe69a); }
-  .area-pessoal { background: linear-gradient(135deg, #f0f0f0, #d8d8d8); }
-
-  .zoom-tip {
-    position: fixed;
-    bottom: 12px;
-    right: 12px;
-    background: rgba(255,255,255,0.8);
-    backdrop-filter: blur(8px);
-    padding: 6px 10px;
-    border-radius: 10px;
-    font-size: 12px;
-    color: #444;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel de Projetos — Henrique Neves</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="toolbar">
-  <select id="area">
-    <option value="area-pesquisa">🔬 Pesquisa</option>
-    <option value="area-evento">🎤 Evento</option>
-    <option value="area-app">💻 App</option>
-    <option value="area-mentoria">🧠 Mentoria</option>
-    <option value="area-pessoal">🌿 Pessoal</option>
-  </select>
-  <button id="addCard">➕ Novo Card</button>
-  <button id="saveLayout">💾 Salvar</button>
-  <button id="reset">🗑️ Limpar</button>
-</div>
+  <div id="toolbar">
+    <select id="area">
+      <option value="area-pesquisa">🔬 Pesquisa</option>
+      <option value="area-evento">🎤 Evento</option>
+      <option value="area-app">💻 App</option>
+      <option value="area-mentoria">🧠 Mentoria</option>
+      <option value="area-pessoal">🌿 Pessoal</option>
+      <option value="area-leitura">📚 Leitura</option>
+    </select>
+    <button id="addCard">➕ Novo Card</button>
+    <button id="saveLayout">💾 Salvar</button>
+    <button id="reset">🗑️ Limpar</button>
+  </div>
 
-<div id="canvas"></div>
-<div class="zoom-tip">🖱️ Use scroll para zoom e arraste o fundo para mover</div>
+  <div id="canvas"></div>
+  <div class="zoom-tip">🖱️ Use scroll para zoom e arraste o fundo para mover</div>
 
-<script>
-const canvas = document.getElementById('canvas');
-const areaSelect = document.getElementById('area');
-const addCardBtn = document.getElementById('addCard');
-const saveBtn = document.getElementById('saveLayout');
-const resetBtn = document.getElementById('reset');
-
-// Pan e Zoom
-let scale = 1, originX = 0, originY = 0, isPanning = false, startX, startY;
-document.body.addEventListener('wheel', e => {
-  e.preventDefault();
-  const delta = e.deltaY > 0 ? 0.9 : 1.1;
-  scale *= delta;
-  canvas.style.transform = `translate(${originX}px, ${originY}px) scale(${scale})`;
-});
-
-document.body.addEventListener('mousedown', e => {
-  if (e.target === canvas) {
-    isPanning = true;
-    startX = e.clientX - originX;
-    startY = e.clientY - originY;
-  }
-});
-document.body.addEventListener('mouseup', () => isPanning = false);
-document.body.addEventListener('mousemove', e => {
-  if (!isPanning) return;
-  originX = e.clientX - startX;
-  originY = e.clientY - startY;
-  canvas.style.transform = `translate(${originX}px, ${originY}px) scale(${scale})`;
-});
-
-// Carregar layout salvo
-const saved = JSON.parse(localStorage.getItem('canvasLayoutV3')) || [];
-saved.forEach(c => addCard(c.text, c.x, c.y, c.area, c.link));
-
-addCardBtn.onclick = () => addCard("Novo projeto", 200, 200, areaSelect.value, "");
-
-saveBtn.onclick = () => {
-  const cards = [...document.querySelectorAll('.card')].map(card => ({
-    text: card.querySelector('textarea').value,
-    link: card.querySelector('.link-input').value,
-    area: card.dataset.area,
-    x: card.offsetLeft,
-    y: card.offsetTop
-  }));
-  localStorage.setItem('canvasLayoutV3', JSON.stringify(cards));
-  alert("Layout salvo!");
-};
-
-resetBtn.onclick = () => {
-  if (confirm("Tem certeza que deseja limpar tudo?")) {
-    localStorage.clear();
-    location.reload();
-  }
-};
-
-// Função principal
-function addCard(text, x, y, area, link) {
-  const card = document.createElement('div');
-  card.className = `card ${area}`;
-  card.dataset.area = area;
-  card.style.left = x + 'px';
-  card.style.top = y + 'px';
-  card.innerHTML = `
-    <div class="card-header">
-      <strong>📌 Projeto</strong>
-      <select class="area-select">
-        <option value="area-pesquisa" ${area==="area-pesquisa"?"selected":""}>🔬</option>
-        <option value="area-evento" ${area==="area-evento"?"selected":""}>🎤</option>
-        <option value="area-app" ${area==="area-app"?"selected":""}>💻</option>
-        <option value="area-mentoria" ${area==="area-mentoria"?"selected":""}>🧠</option>
-        <option value="area-pessoal" ${area==="area-pessoal"?"selected":""}>🌿</option>
-      </select>
-    </div>
-    <textarea>${text}</textarea>
-    <input class="link-input" value="${link}" placeholder="Cole aqui o link (GitHub, Docs, etc.)">
-  `;
-  makeDraggable(card);
-  card.querySelector('.area-select').addEventListener('change', e => {
-    card.className = `card ${e.target.value}`;
-    card.dataset.area = e.target.value;
-  });
-  canvas.appendChild(card);
-}
-
-function makeDraggable(el) {
-  let offsetX, offsetY;
-  el.onmousedown = e => {
-    if (["TEXTAREA", "SELECT", "INPUT"].includes(e.target.tagName)) return;
-    offsetX = e.clientX - el.offsetLeft;
-    offsetY = e.clientY - el.offsetTop;
-    document.onmousemove = e => {
-      el.style.left = (e.clientX - offsetX) + 'px';
-      el.style.top = (e.clientY - offsetY) + 'px';
-    };
-    document.onmouseup = () => document.onmousemove = null;
-  };
-}
-</script>
+  <script src="github.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
