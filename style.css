@@ -13,14 +13,27 @@ body{
   margin-right:8px;padding:6px 10px;border-radius:8px;
   border:1px solid #ccc;font-size:14px;background:white;cursor:pointer;
 }
-#canvas{
-  width:6000px;height:4000px;position:relative;transform-origin:0 0;
-  background:repeating-linear-gradient(45deg,#fafafa,#fafafa 49px,#f0f0f0 50px);
-  z-index:5;
+/* === Correção de sobreposição === */
+#canvas {
+  width: 6000px;
+  height: 4000px;
+  position: relative;
+  transform-origin: 0 0;
+  background: repeating-linear-gradient(45deg, #fafafa, #fafafa 49px, #f0f0f0 50px);
+  z-index: 10; /* cards e fundo */
 }
-#connections{
-  position:absolute;top:0;left:0;width:6000px;height:4000px;pointer-events:none;z-index:1;
+
+/* As conexões ficam por cima, mas sem bloquear cliques */
+#connections {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6000px;
+  height: 4000px;
+  pointer-events: none; /* permite clicar nos cards */
+  z-index: 20; /* 👈 agora as linhas aparecem sobre o canvas */
 }
+
 .card{
   position:absolute;width:260px;min-height:170px;border-radius:16px;
   box-shadow:0 4px 12px rgba(0,0,0,.12);
