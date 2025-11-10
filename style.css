@@ -2,7 +2,7 @@ body {
   margin: 0;
   overflow: hidden;
   background: linear-gradient(120deg,#f8f9fb,#e6ebef);
-  font-family: "Inter", sans-serif;
+  font-family: "Inter",sans-serif;
 }
 
 #toolbar {
@@ -35,6 +35,18 @@ body {
   background: repeating-linear-gradient(45deg,#fafafa,#fafafa 49px,#f0f0f0 50px);
 }
 
+#connections {
+  position: absolute;
+  top: 0; left: 0;
+  width: 6000px;
+  height: 4000px;
+  pointer-events: none;
+  stroke: rgba(100,100,255,0.4);
+  stroke-width: 2;
+  fill: none;
+  z-index: 0;
+}
+
 .card {
   position: absolute;
   width: 260px;
@@ -46,11 +58,7 @@ body {
   transition: transform 0.15s;
   color: #222;
   overflow: hidden;
-}
-
-.card:active {
-  cursor: grabbing;
-  transform: scale(1.03);
+  z-index: 10;
 }
 
 .card img {
@@ -59,6 +67,8 @@ body {
   margin-bottom: 8px;
 }
 
+.card:active { cursor: grabbing; transform: scale(1.03); }
+
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -66,13 +76,23 @@ body {
   margin-bottom: 8px;
 }
 
-.card-header select {
-  font-size: 13px;
-  border-radius: 6px;
-  border: none;
-  background: rgba(255,255,255,0.6);
-  cursor: pointer;
+.card-controls {
+  display: flex;
+  gap: 5px;
 }
+
+.card-controls button {
+  border: none;
+  background: rgba(255,255,255,0.8);
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  width: 26px;
+  height: 26px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+.card-controls button:hover { transform: scale(1.1); }
 
 textarea {
   width: 100%;
@@ -85,8 +105,7 @@ textarea {
   font-family: inherit;
 }
 
-input.link-input,
-input.progress-input {
+input.link-input, input.progress-input {
   width: 100%;
   border: none;
   background: rgba(255,255,255,0.7);
@@ -105,7 +124,6 @@ input.progress-input {
   margin-top: 6px;
   overflow: hidden;
 }
-
 .progress-fill {
   height: 100%;
   border-radius: 6px;
@@ -127,7 +145,7 @@ input.progress-input {
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-/* Paleta por área */
+/* Cores */
 .area-pesquisa { background: linear-gradient(135deg,#d9eaff,#b0d4ff); }
 .area-evento { background: linear-gradient(135deg,#fde2e4,#f8b5c1); }
 .area-app { background: linear-gradient(135deg,#e3fbe3,#b9ebb9); }
