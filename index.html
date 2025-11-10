@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Painel de Projetos — Henrique Neves</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="toolbar">
@@ -19,11 +19,16 @@
     <button id="addCard">➕ Novo Card</button>
     <button id="saveLayout">💾 Salvar</button>
     <button id="reset">🗑️ Limpar</button>
+    <button id="toggleFocus">🎯 Modo Foco: OFF</button>
   </div>
 
+  <!-- SVG para conexões (linhas + rótulos) -->
   <svg id="connections"></svg>
+
+  <!-- Canvas dos cards -->
   <div id="canvas"></div>
-  <div class="zoom-tip">🖱️ Use scroll para zoom e arraste o fundo para mover</div>
+
+  <div class="zoom-tip">🖱️ Zoom: scroll • Pan: arraste o fundo • Clique em 🌐 para criar conexões</div>
 
   <script src="github.js"></script>
   <script src="script.js"></script>
